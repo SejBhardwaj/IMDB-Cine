@@ -8,7 +8,7 @@
 
 import 'dotenv/config';
 
-const TMDB_API_KEY = process.env.NEXT_PUBLIC_TMDB_API_KEY;
+const TMDB_API_KEY = process.env.TMDB_API_KEY;
 const TMDB_BASE_URL = 'https://api.themoviedb.org/3';
 const TMDB_IMAGE_URL = 'https://image.tmdb.org/t/p/w500';
 
@@ -21,7 +21,7 @@ async function testTMDbAPI() {
     console.log('\n📝 Please follow these steps:');
     console.log('1. Read SETUP_TMDB_API.md for detailed instructions');
     console.log('2. Get your free API key from https://www.themoviedb.org/settings/api');
-    console.log('3. Add it to .env.local file as NEXT_PUBLIC_TMDB_API_KEY=your_key_here');
+    console.log('3. Add it to .env.local file as TMDB_API_KEY=your_key_here');
     console.log('4. Restart your dev server\n');
     process.exit(1);
   }

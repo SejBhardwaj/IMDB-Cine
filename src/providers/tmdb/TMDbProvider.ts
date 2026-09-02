@@ -67,7 +67,7 @@ export class TMDbProvider extends MovieProvider {
    */
   private ensureConfigured(): void {
     if (!this.isConfigured || !this.apiKey) {
-      throw new Error('TMDb API key not configured. This feature requires NEXT_PUBLIC_TMDB_API_KEY in .env.local');
+      throw new Error('TMDb API key not configured. This feature requires TMDB_API_KEY in .env.local');
     }
   }
 

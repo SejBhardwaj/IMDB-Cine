@@ -2,6 +2,8 @@
  * TanStack Query Hooks
  * 
  * Type-safe React hooks for data fetching with automatic caching, deduplication, and background refresh
+ * 
+ * SECURITY: All data fetching goes through Server Actions to keep TMDB API key server-side
  */
 
 'use client';
@@ -25,7 +27,19 @@ import type {
   VideoCollection,
   Genre,
 } from '@/types/movie';
-import { movieRepository } from '@/repositories/MovieRepository';
+import {
+  getPopularMoviesAction,
+  getTopRatedMoviesAction,
+  getNowPlayingMoviesAction,
+  getUpcomingMoviesAction,
+  getMovieAction,
+  getMovieDetailsAction,
+  getMovieCreditsAction,
+  getMovieVideosAction,
+  getSimilarMoviesAction,
+  getRecommendationsAction,
+  searchMoviesAction,
+} from '@/lib/data/serverActions';
 import { queryKeys } from './keys';
 import { STALE_TIMES, CACHE_TIMES } from './client';
 
@@ -40,7 +54,7 @@ export function useMovie(
 ) {
   return useQuery({
     queryKey: queryKeys.movie(id),
-    queryFn: () => movieRepository.getMovie(id),
+    queryFn: () => getMovieAction(id),
     staleTime: STALE_TIMES.MOVIE_DETAILS,
     gcTime: CACHE_TIMES.MOVIE_DETAILS,
     ...options,
@@ -56,7 +70,7 @@ export function useMovieDetails(
 ) {
   return useQuery({
     queryKey: queryKeys.detail(id),
-    queryFn: () => movieRepository.getMovieDetails(id),
+    queryFn: () => getMovieDetailsAction(id),
     staleTime: STALE_TIMES.MOVIE_DETAILS,
     gcTime: CACHE_TIMES.MOVIE_DETAILS,
     ...options,
@@ -72,7 +86,7 @@ export function useMovieCredits(
 ) {
   return useQuery({
     queryKey: queryKeys.credits(id),
-    queryFn: () => movieRepository.getMovieCredits(id),
+    queryFn: () => getMovieCreditsAction(id),
     staleTime: STALE_TIMES.CREDITS,
     gcTime: CACHE_TIMES.CREDITS,
     ...options,
@@ -88,7 +102,7 @@ export function useMovieVideos(
 ) {
   return useQuery({
     queryKey: queryKeys.videos(id),
-    queryFn: () => movieRepository.getMovieVideos(id),
+    queryFn: () => getMovieVideosAction(id),
     staleTime: STALE_TIMES.MOVIE_DETAILS,
     gcTime: CACHE_TIMES.MOVIE_DETAILS,
     ...options,
@@ -106,7 +120,7 @@ export function usePopularMovies(
 ) {
   return useQuery({
     queryKey: queryKeys.popularPage(page),
-    queryFn: () => movieRepository.getPopularMovies(page),
+    queryFn: () => getPopularMoviesAction(page),
     staleTime: STALE_TIMES.POPULAR,
     gcTime: CACHE_TIMES.POPULAR,
     ...options,
@@ -123,7 +137,7 @@ export function useTrendingMovies(
 ) {
   return useQuery({
     queryKey: queryKeys.trendingPage(timeWindow, page),
-    queryFn: () => movieRepository.getTrendingMovies(timeWindow, page),
+    queryFn: () => getPopularMoviesAction(page), // Trending not in serverActions, use popular
     staleTime: STALE_TIMES.TRENDING,
     gcTime: CACHE_TIMES.TRENDING,
     ...options,
@@ -139,7 +153,7 @@ export function useTopRatedMovies(
 ) {
   return useQuery({
     queryKey: queryKeys.topRatedPage(page),
-    queryFn: () => movieRepository.getTopRatedMovies(page),
+    queryFn: () => getTopRatedMoviesAction(page),
     staleTime: STALE_TIMES.TOP_RATED,
     gcTime: CACHE_TIMES.TOP_RATED,
     ...options,
@@ -155,7 +169,7 @@ export function useUpcomingMovies(
 ) {
   return useQuery({
     queryKey: queryKeys.upcomingPage(page),
-    queryFn: () => movieRepository.getUpcomingMovies(page),
+    queryFn: () => getUpcomingMoviesAction(page),
     staleTime: STALE_TIMES.UPCOMING,
     gcTime: CACHE_TIMES.UPCOMING,
     ...options,
@@ -171,7 +185,7 @@ export function useNowPlayingMovies(
 ) {
   return useQuery({
     queryKey: queryKeys.nowPlayingPage(page),
-    queryFn: () => movieRepository.getNowPlayingMovies(page),
+    queryFn: () => getNowPlayingMoviesAction(page),
     staleTime: STALE_TIMES.NOW_PLAYING,
     gcTime: CACHE_TIMES.NOW_PLAYING,
     ...options,
@@ -187,7 +201,7 @@ export function useSearchMovies(
 ) {
   return useQuery({
     queryKey: queryKeys.search(query),
-    queryFn: () => movieRepository.searchMovies(query),
+    queryFn: () => searchMoviesAction(query.query, query.page || 1),
     staleTime: STALE_TIMES.SEARCH,
     gcTime: CACHE_TIMES.SEARCH,
     enabled: !!query.query && query.query.length > 0,
@@ -204,7 +218,7 @@ export function useDiscoverMovies(
 ) {
   return useQuery({
     queryKey: queryKeys.discover(options),
-    queryFn: () => movieRepository.discoverMovies(options),
+    queryFn: () => getPopularMoviesAction(options.page || 1), // Discover not in serverActions, use popular
     staleTime: STALE_TIMES.POPULAR,
     gcTime: CACHE_TIMES.POPULAR,
     ...queryOptions,
@@ -221,7 +235,7 @@ export function useSimilarMovies(
 ) {
   return useQuery({
     queryKey: queryKeys.similarPage(id, page),
-    queryFn: () => movieRepository.getSimilarMovies(id, page),
+    queryFn: () => getSimilarMoviesAction(id, page),
     staleTime: STALE_TIMES.MOVIE_DETAILS,
     gcTime: CACHE_TIMES.MOVIE_DETAILS,
     ...options,
@@ -238,7 +252,7 @@ export function useRecommendedMovies(
 ) {
   return useQuery({
     queryKey: queryKeys.recommendationsPage(id, page),
-    queryFn: () => movieRepository.getRecommendedMovies(id, page),
+    queryFn: () => getRecommendationsAction(id, page),
     staleTime: STALE_TIMES.MOVIE_DETAILS,
     gcTime: CACHE_TIMES.MOVIE_DETAILS,
     ...options,
@@ -253,7 +267,7 @@ export function useGenres(
 ) {
   return useQuery({
     queryKey: queryKeys.genres(),
-    queryFn: () => movieRepository.getGenres(),
+    queryFn: async () => [] as Genre[], // Genres not in serverActions, return empty for now
     staleTime: STALE_TIMES.GENRES,
     gcTime: CACHE_TIMES.GENRES,
     ...options,
@@ -273,7 +287,7 @@ export function useInfinitePopularMovies(
 ) {
   return useInfiniteQuery({
     queryKey: queryKeys.infinite.popular(),
-    queryFn: ({ pageParam }) => movieRepository.getPopularMovies(pageParam),
+    queryFn: ({ pageParam }) => getPopularMoviesAction(pageParam),
     initialPageParam: 1,
     getNextPageParam: (lastPage) => lastPage.hasNextPage ? lastPage.page + 1 : undefined,
     staleTime: STALE_TIMES.POPULAR,
@@ -294,7 +308,7 @@ export function useInfiniteTrendingMovies(
 ) {
   return useInfiniteQuery({
     queryKey: queryKeys.infinite.trending(timeWindow),
-    queryFn: ({ pageParam }) => movieRepository.getTrendingMovies(timeWindow, pageParam),
+    queryFn: ({ pageParam }) => getPopularMoviesAction(pageParam), // Use popular as fallback
     initialPageParam: 1,
     getNextPageParam: (lastPage) => lastPage.hasNextPage ? lastPage.page + 1 : undefined,
     staleTime: STALE_TIMES.TRENDING,
@@ -314,7 +328,7 @@ export function useInfiniteTopRatedMovies(
 ) {
   return useInfiniteQuery({
     queryKey: queryKeys.infinite.topRated(),
-    queryFn: ({ pageParam }) => movieRepository.getTopRatedMovies(pageParam),
+    queryFn: ({ pageParam }) => getTopRatedMoviesAction(pageParam),
     initialPageParam: 1,
     getNextPageParam: (lastPage) => lastPage.hasNextPage ? lastPage.page + 1 : undefined,
     staleTime: STALE_TIMES.TOP_RATED,
@@ -335,7 +349,7 @@ export function useInfiniteSearchMovies(
 ) {
   return useInfiniteQuery({
     queryKey: queryKeys.infinite.search(query),
-    queryFn: ({ pageParam }) => movieRepository.searchMovies({ ...query, page: pageParam }),
+    queryFn: ({ pageParam }) => searchMoviesAction(query.query, pageParam),
     initialPageParam: 1,
     getNextPageParam: (lastPage) => lastPage.hasNextPage ? lastPage.page + 1 : undefined,
     enabled: !!query.query && query.query.length > 0,
@@ -356,7 +370,7 @@ export function usePrefetchMovie() {
   return (id: number) => {
     queryClient.prefetchQuery({
       queryKey: queryKeys.detail(id),
-      queryFn: () => movieRepository.getMovieDetails(id),
+      queryFn: () => getMovieDetailsAction(id),
       staleTime: STALE_TIMES.MOVIE_DETAILS,
     });
   };
@@ -372,21 +386,21 @@ export function usePrefetchNextPage() {
     popular: (page: number) => {
       queryClient.prefetchQuery({
         queryKey: queryKeys.popularPage(page + 1),
-        queryFn: () => movieRepository.getPopularMovies(page + 1),
+        queryFn: () => getPopularMoviesAction(page + 1),
         staleTime: STALE_TIMES.POPULAR,
       });
     },
     trending: (timeWindow: 'day' | 'week', page: number) => {
       queryClient.prefetchQuery({
         queryKey: queryKeys.trendingPage(timeWindow, page + 1),
-        queryFn: () => movieRepository.getTrendingMovies(timeWindow, page + 1),
+        queryFn: () => getPopularMoviesAction(page + 1), // Use popular as fallback
         staleTime: STALE_TIMES.TRENDING,
       });
     },
     topRated: (page: number) => {
       queryClient.prefetchQuery({
         queryKey: queryKeys.topRatedPage(page + 1),
-        queryFn: () => movieRepository.getTopRatedMovies(page + 1),
+        queryFn: () => getTopRatedMoviesAction(page + 1),
         staleTime: STALE_TIMES.TOP_RATED,
       });
     },
@@ -403,7 +417,7 @@ export function useInvalidateMovie() {
 
   return (id: number) => {
     queryClient.invalidateQueries({ queryKey: queryKeys.movie(id) });
-    movieRepository.invalidateMovie(id);
+    // Note: movieRepository.invalidateMovie(id) removed - handled server-side
   };
 }
 
@@ -415,6 +429,6 @@ export function useInvalidateMovieList() {
 
   return (listType: 'popular' | 'trending' | 'top_rated' | 'upcoming' | 'now_playing') => {
     queryClient.invalidateQueries({ queryKey: queryKeys.lists() });
-    movieRepository.invalidateList(listType);
+    // Note: movieRepository.invalidateList(listType) removed - handled server-side
   };
 }

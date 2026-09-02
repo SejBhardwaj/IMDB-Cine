@@ -37,13 +37,13 @@ export const TMDB_IMAGE_SIZES = {
 } as const;
 
 /**
- * Get TMDb API key from environment
+ * Get TMDb API key from environment (server-only)
  */
 export function getTMDbApiKey(): string | null {
-  const apiKey = process.env.NEXT_PUBLIC_TMDB_API_KEY || process.env.TMDB_API_KEY;
+  const apiKey = process.env.TMDB_API_KEY;
   
   if (!apiKey) {
-    console.warn('⚠️ TMDb API key not configured. Movie data features will be disabled. Set NEXT_PUBLIC_TMDB_API_KEY in .env.local');
+    console.warn('⚠️ TMDb API key not configured. Movie data features will be disabled. Set TMDB_API_KEY in .env.local');
     return null;
   }
   

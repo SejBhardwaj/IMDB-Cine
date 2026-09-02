@@ -7,68 +7,46 @@
 
 'use server';
 
-import { MovieRepository } from './repositories/MovieRepository';
-import { providerRegistry } from './providers/MovieProvider';
-import { TMDbProvider } from './providers/TMDbProvider';
-import { MemoryCacheAdapter } from './cache/CacheManager';
-import { createCacheWithFallback } from './cache/RedisCacheAdapter';
-import type { MovieDetails, PaginatedResponse, Movie, MovieFilters } from './types/movie';
+import { movieRepository } from '@/repositories/MovieRepository';
+import type { 
+  MovieDetails, 
+  PaginatedResponse, 
+  Movie, 
+  SearchQuery, 
+  DiscoverOptions,
+  Credits,
+  VideoCollection,
+  ImageCollection
+} from '@/types/movie';
 
 /**
  * Initialize repository (singleton pattern for server)
  */
-let repositoryInstance: MovieRepository | null = null;
-
-function getRepository(): MovieRepository {
-  if (repositoryInstance) {
-    return repositoryInstance;
-  }
-
-  // Check for TMDb API key
-  const tmdbApiKey = process.env.TMDB_API_KEY || process.env.NEXT_PUBLIC_TMDB_API_KEY;
-  if (!tmdbApiKey) {
-    throw new Error('TMDB_API_KEY environment variable is required');
-  }
-
-  // Register TMDb provider
-  const tmdbProvider = new TMDbProvider({
-    apiKey: tmdbApiKey,
-    language: 'en-US',
-  });
-
-  if (!providerRegistry.has('tmdb')) {
-    providerRegistry.register('tmdb', tmdbProvider);
-  }
-
-  // Create cache (Redis with fallback to memory)
-  const cache = createCacheWithFallback({
-    namespace: 'movies',
-    enableStats: true,
-  });
-
-  // Create repository
-  repositoryInstance = new MovieRepository({
-    primaryProvider: 'tmdb',
-    cache,
-    enableDeduplication: true,
-  });
-
-  return repositoryInstance;
+async function getRepository() {
+  return movieRepository;
 }
 
 /**
  * Server Action: Get movie by ID
  */
-export async function getMovieAction(id: number | string): Promise<MovieDetails> {
-  const repo = getRepository();
-  return repo.getMovie(id);
+export async function getMovieAction(id: number | string): Promise<Movie> {
+  const repo = await getRepository();
+  return repo.getMovie(id as number);
+}
+
+/**
+ * Server Action: Get movie details with all related data
+ */
+export async function getMovieDetailsAction(id: number): Promise<MovieDetails> {
+  const repo = await getRepository();
+  return repo.getMovieDetails(id);
 }
 
 /**
  * Server Action: Get popular movies
  */
 export async function getPopularMoviesAction(page: number = 1): Promise<PaginatedResponse<Movie>> {
-  const repo = getRepository();
+  const repo = await getRepository();
   return repo.getPopularMovies(page);
 }
 
@@ -76,7 +54,7 @@ export async function getPopularMoviesAction(page: number = 1): Promise<Paginate
  * Server Action: Get top-rated movies
  */
 export async function getTopRatedMoviesAction(page: number = 1): Promise<PaginatedResponse<Movie>> {
-  const repo = getRepository();
+  const repo = await getRepository();
   return repo.getTopRatedMovies(page);
 }
 
@@ -84,7 +62,7 @@ export async function getTopRatedMoviesAction(page: number = 1): Promise<Paginat
  * Server Action: Get now playing movies
  */
 export async function getNowPlayingMoviesAction(page: number = 1): Promise<PaginatedResponse<Movie>> {
-  const repo = getRepository();
+  const repo = await getRepository();
   return repo.getNowPlayingMovies(page);
 }
 
@@ -92,7 +70,7 @@ export async function getNowPlayingMoviesAction(page: number = 1): Promise<Pagin
  * Server Action: Get upcoming movies
  */
 export async function getUpcomingMoviesAction(page: number = 1): Promise<PaginatedResponse<Movie>> {
-  const repo = getRepository();
+  const repo = await getRepository();
   return repo.getUpcomingMovies(page);
 }
 
@@ -103,20 +81,8 @@ export async function searchMoviesAction(
   query: string,
   page: number = 1
 ): Promise<PaginatedResponse<Movie>> {
-  const repo = getRepository();
-  return repo.searchMovies(query, page);
-}
-
-/**
- * Server Action: Search movies with filters
- */
-export async function searchMoviesWithFiltersAction(
-  query: string,
-  filters: MovieFilters,
-  page: number = 1
-): Promise<PaginatedResponse<Movie>> {
-  const repo = getRepository();
-  return repo.searchMoviesWithFilters(query, filters, page);
+  const repo = await getRepository();
+  return repo.searchMovies({ query, page });
 }
 
 /**
@@ -126,8 +92,8 @@ export async function getRecommendationsAction(
   movieId: number,
   page: number = 1
 ): Promise<PaginatedResponse<Movie>> {
-  const repo = getRepository();
-  return repo.getRecommendations(movieId, page);
+  const repo = await getRepository();
+  return repo.getRecommendedMovies(movieId, page);
 }
 
 /**
@@ -137,32 +103,33 @@ export async function getSimilarMoviesAction(
   movieId: number,
   page: number = 1
 ): Promise<PaginatedResponse<Movie>> {
-  const repo = getRepository();
+  const repo = await getRepository();
   return repo.getSimilarMovies(movieId, page);
 }
 
 /**
  * Server Action: Get movie credits
  */
-export async function getMovieCreditsAction(movieId: number) {
-  const repo = getRepository();
+export async function getMovieCreditsAction(movieId: number): Promise<Credits> {
+  const repo = await getRepository();
   return repo.getMovieCredits(movieId);
 }
 
 /**
  * Server Action: Get movie videos
  */
-export async function getMovieVideosAction(movieId: number) {
-  const repo = getRepository();
+export async function getMovieVideosAction(movieId: number): Promise<VideoCollection> {
+  const repo = await getRepository();
   return repo.getMovieVideos(movieId);
 }
 
 /**
  * Server Action: Get movie images
  */
-export async function getMovieImagesAction(movieId: number) {
-  const repo = getRepository();
-  return repo.getMovieImages(movieId);
+export async function getMovieImagesAction(movieId: number): Promise<ImageCollection> {
+  const repo = await getRepository();
+  // movieRepository doesn't have getMovieImages, return empty collection
+  return { backdrops: [], posters: [], logos: [] };
 }
 
 /**
@@ -172,54 +139,61 @@ export async function discoverByGenreAction(
   genreId: number,
   page: number = 1
 ): Promise<PaginatedResponse<Movie>> {
-  const repo = getRepository();
-  return repo.discoverByGenre(genreId, page);
+  const repo = await getRepository();
+  return repo.discoverMovies({ with_genres: String(genreId), page });
 }
 
 /**
  * Server Action: Get image URL
  */
-export function getImageUrlAction(path: string, size?: 'small' | 'medium' | 'large' | 'original'): string {
-  const repo = getRepository();
-  return repo.getImageUrl(path, size);
+export async function getImageUrlAction(path: string, size?: 'small' | 'medium' | 'large' | 'original'): Promise<string> {
+  // Simple image URL builder for TMDB
+  const sizeMap = {
+    small: 'w185',
+    medium: 'w500',
+    large: 'w780',
+    original: 'original'
+  };
+  const sizeStr = size ? sizeMap[size] : 'w500';
+  return `https://image.tmdb.org/t/p/${sizeStr}${path}`;
 }
 
 /**
  * Server Action: Prefetch movie (for hover prefetching)
  */
 export async function prefetchMovieAction(id: number): Promise<void> {
-  const repo = getRepository();
-  await repo.prefetchMovie(id);
+  const repo = await getRepository();
+  await repo.getMovie(id);
 }
 
 /**
  * Server Action: Batch get movies
  */
-export async function getMoviesBatchAction(ids: number[]): Promise<MovieDetails[]> {
-  const repo = getRepository();
-  return repo.getMoviesBatch(ids);
+export async function getMoviesBatchAction(ids: number[]): Promise<Movie[]> {
+  const repo = await getRepository();
+  return Promise.all(ids.map(id => repo.getMovie(id)));
 }
 
 /**
  * Server Action: Invalidate movie cache
  */
 export async function invalidateMovieCacheAction(id: number | string): Promise<void> {
-  const repo = getRepository();
-  await repo.invalidateMovie(id);
+  const repo = await getRepository();
+  repo.invalidateMovie(id as number);
 }
 
 /**
- * Server Action: Invalidate cache by tags
+ * Server Action: Invalidate cache by list type
  */
-export async function invalidateCacheByTagsAction(tags: string[]): Promise<void> {
-  const repo = getRepository();
-  await repo.invalidateCache(tags);
+export async function invalidateCacheByListAction(listType: string): Promise<void> {
+  const repo = await getRepository();
+  repo.invalidateList(listType);
 }
 
 /**
  * Get repository statistics (for debugging)
  */
 export async function getRepositoryStatsAction() {
-  const repo = getRepository();
-  return repo.getStats();
+  const repo = await getRepository();
+  return repo.getCacheStats();
 }

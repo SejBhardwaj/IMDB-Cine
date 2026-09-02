@@ -1,7 +1,7 @@
 export const TMDB_CONFIG = {
-  API_KEY: process.env.NEXT_PUBLIC_TMDB_API_KEY!,
-  BASE_URL: process.env.NEXT_PUBLIC_TMDB_BASE_URL || 'https://api.themoviedb.org/3',
-  IMAGE_BASE_URL: process.env.NEXT_PUBLIC_TMDB_IMAGE_BASE_URL || 'https://image.tmdb.org/t/p',
+  API_KEY: process.env.TMDB_API_KEY!,
+  BASE_URL: 'https://api.themoviedb.org/3',
+  IMAGE_BASE_URL: 'https://image.tmdb.org/t/p',
   IMAGE_SIZES: {
     backdrop: {
       w300: 'w300',
